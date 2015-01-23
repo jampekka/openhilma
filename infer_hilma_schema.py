@@ -4,7 +4,6 @@ from pathlib import Path
 import argh
 import xml.etree.ElementTree as ET
 import json
-import yaml
 import sys
 import itertools
 
