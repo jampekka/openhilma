@@ -24,7 +24,7 @@ def ensure_date(str_or_date, defaulter=lambda: None):
 
 	return date
 
-def fetch_days_data(api_root_url, target_directory, date):
+def fetch_days_data(api_root_url, target_directory, date, force_refresh=False):
 	# Ad-hoc, but Python's URL parsing/formatting
 	# isn't one of its best library components either :(
 	mangled_probe_end = date.strftime("%Y%m%d240000")
@@ -32,7 +32,7 @@ def fetch_days_data(api_root_url, target_directory, date):
 	dates_url = "%s?start=%s&end=%s"%(api_root_url, mangled_probe_start, mangled_probe_end)
 	
 	target_path = target_directory / ("%s.xml"%(date.isoformat()))
-	if not target_path.exists():
+	if force_refresh or not target_path.exists():
 		# This should be atomic
 		try:
 			with target_path.open('wb') as target_file, request.urlopen(dates_url) as src_file:
@@ -60,17 +60,22 @@ def fetch_days_data(api_root_url, target_directory, date):
 
 def main(api_root_url, target_directory,
 		newest_date=None, oldest_date=None,
-		empty_days_before_giving_up=60, server_mercy_sleep=1.0):
+		empty_days_before_giving_up=60, server_mercy_sleep=1.0,
+		force_refresh_days=7):
 	target_directory = Path(target_directory)
 	probe_date = ensure_date(newest_date, datetime.date.today)
 	oldest_date = ensure_date(oldest_date, lambda: datetime.date.min)
 	one_day = datetime.timedelta(1)
+	force_until = probe_date - datetime.timedelta(force_refresh_days)
 	empties = 0
 	while probe_date >= oldest_date:
 		if empties > empty_days_before_giving_up:
 			break
 
-		data, is_empty, was_cached = fetch_days_data(api_root_url, target_directory, probe_date)
+		data, is_empty, was_cached = fetch_days_data(api_root_url,
+			target_directory,
+			probe_date,
+			probe_date >= force_until)
 		if not was_cached:
 			time.sleep(server_mercy_sleep)
 
