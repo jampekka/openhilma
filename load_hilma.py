@@ -18,11 +18,9 @@ def load_hilma_xml(inputfile, collection):
 	
 	notices = map(hilma_to_dict, notices)
 	
-	collection.ensure_index('ID', unique=True)
-	
 	for n in notices:
 		# Use the ID as primary key
-		n.update('_id', n['ID'])
+		n.update({'_id': n['ID']})
 		collection.save(n)
 	
 def sync_hilma_xml_directory(directory, mongo_uri=None, mongo_db='openhilma'):
