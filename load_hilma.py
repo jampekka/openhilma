@@ -3,7 +3,9 @@
 import xml.etree.ElementTree as ET
 import sys
 import pymongo
+from bson.objectid import ObjectId
 from pathlib import Path
+import hashlib
 
 import argh
 
@@ -12,6 +14,12 @@ from hilma_conversion import get_handler
 
 hilma_to_dict = lambda notice: etree_to_dict(notice, get_handler)
 
+def hilma_id_to_mongo(hilma_id):
+	# A hack to generate a deterministic
+	# Mongo objectId from a HILMA-id. Mostly
+	# to workaround brainfarts of Eve
+	return ObjectId(hashlib.md5(hilma_id.encode('utf-8')).digest()[:12])
+
 def load_hilma_xml(inputfile, collection):
 	root = ET.parse(inputfile).getroot()
 	notices = list(root.iterfind('WRAPPED_NOTICE'))
@@ -19,8 +27,8 @@ def load_hilma_xml(inputfile, collection):
 	notices = map(hilma_to_dict, notices)
 	
 	for n in notices:
-		# Use the ID as primary key
-		n.update({'_id': n['ID']})
+		# Use a mangled ID as primary key
+		n.update({'_id': hilma_id_to_mongo(n['ID'])})
 		collection.save(n)
 	
 def sync_hilma_xml_directory(directory, mongo_uri=None, mongo_db='openhilma'):
