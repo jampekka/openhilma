@@ -24,11 +24,15 @@ def datetime_converter(d, t, **kwargs):
 		int(t.find('DAY').text),
 		*time)
 
+def container_converter(d, t, default):
+	return default(d, t)
+
 handlers = {}
 for tag in TEXT_TAGS: handlers[tag] = text_converter
 for tag in NUMERIC_TAGS: handlers[tag] = numeric_converter
 for tag in DATE_TAGS: handlers[tag] = date_converter
 for tag in DATETIME_TAGS: handlers[tag] = datetime_converter
+for tag in CONTAINER_TAGS: handlers[tag] = container_converter
 
 def get_handler(el, default):
 	return handlers.get(el.tag, default)

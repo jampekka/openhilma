@@ -62,6 +62,9 @@ def is_date_tag(el):
 		return True
 
 	return False
+
+def is_simple_container_tag(el):
+	return len(el) < 2
 	
 
 def notices(directory):
@@ -80,10 +83,12 @@ def main(input_directory):
 	
 	trivial_tags = applies_for(is_trivial_tag)
 	numeric_tags = applies_for(is_numeric_tag)
+	container_tags = applies_for(is_simple_container_tag) - trivial_tags
 	text_tags = trivial_tags - numeric_tags
 
 	print("TEXT_TAGS = " + repr((text_tags)))
 	print("NUMERIC_TAGS = " + repr((numeric_tags)))
+	print("CONTAINER_TAGS = " + repr((container_tags)))
 	print("DATETIME_TAGS = " + repr((applies_for(is_datetime_tag))))
 	print("DATE_TAGS = " + repr((applies_for(is_date_tag))))
 	

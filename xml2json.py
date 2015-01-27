@@ -8,7 +8,7 @@ def default_handler(d, child, **kwargs):
 # nested elements are always lists to avoid data-driven weirdness by default.
 # These can be overriden with the handlers-parameter.
 def etree_to_dict(t, gethandler=None):
-	def default_handler(d, child):
+	def default_handler(d, child, **kwargs):
 		if child.tag not in d:
 			d[child.tag] = []
 		d[child.tag].append(etree_to_dict(child, gethandler))
@@ -19,7 +19,7 @@ def etree_to_dict(t, gethandler=None):
 
 	for child in t.getchildren():
 		handler = gethandler(child, default_handler)
-		handler(d, child)
+		handler(d, child, default=default_handler)
 	
 	text = t.text if t.text is not None else ""
 	text = text.strip()
