@@ -21,6 +21,7 @@ def hilma_id_to_mongo(hilma_id):
 	return ObjectId(hashlib.md5(hilma_id.encode('utf-8')).digest()[:12])
 
 def load_hilma_xml(inputfile, collection):
+	collection.ensure_index([("$**", "text")])
 	root = ET.parse(inputfile).getroot()
 	notices = list(root.iterfind('WRAPPED_NOTICE'))
 	
