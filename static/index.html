@@ -1,0 +1,173 @@
+<html>
+<head>
+
+<script type="text/javascript" src="vendor/coffee-script.js"></script>
+<script type="text/javascript" src="vendor/underscore.js"></script>
+<script type="text/javascript" src="vendor/jquery.js"></script>
+
+<link href="vendor/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+<style type="text/css">
+.entry_header {
+	font-size: normal;
+}
+
+.item-list-item {
+	list-style-type: none;
+}
+
+#entries {
+	padding: 10px;
+}
+
+#entries > li {
+}
+
+.item-value::before {
+	content: ": ";
+}
+
+.item-value {
+	font-weight: bold;
+}
+
+.item-label {
+}
+
+.item-kids {
+	padding: 0px;
+	padding-left: 1em;
+}
+
+.item-kids {
+	border-left: 1px solid #f0f0f0;
+}
+
+.item-attributes {
+	padding-left: 0;
+	font-size: x-small;
+}
+
+.item-attributes li {
+	display: inline-block;
+	padding-right: 1em;
+}
+
+.item-description, .subcontent {
+	border: 0;
+	padding: 0;
+}
+
+.type-badge {
+	float: right;
+}
+
+</style>
+
+</head>
+<body>
+<ul id="entries" class="list-group"></ul>
+</body>
+
+<script type="text/coffeescript">
+config =
+	api_url: "../api/v0/notices/"
+	default_args: {'sort': '-MODIFIED'}
+
+
+tree_view = (items, name='') ->
+	el = $ """<li class="item-list-item">"""
+	label = $ """<div class="item-description"></span>"""
+	if name
+		label.append $ """<span class="item-label">#{name}</span>"""
+	el.append label
+	if not _.isObject items
+		if items
+			label.append $ """<span class="item-value">#{items}</span>"""
+		return el
+	
+	subcontent = $("""<div class="subcontent">""").appendTo el
+	attributes = $ """<ul class="item-attributes"></ul>"""
+	childlist = $ """<ul class="item-kids">"""
+	subcontent.append attributes
+	subcontent.append childlist
+
+	if "@" of items and items["@"]
+		label.append $ """<span class="item-value">#{items["@"]}</span>"""
+	
+	items = ([name, item] for name, item of items when name[0] != '_' and name != '@')
+	items = _.sortBy items, ([name, item]) -> name
+
+	for [name, item] in items
+		if _.isArray item
+			for kid in item
+				childlist.append tree_view kid, name
+			continue
+		
+		childel = tree_view item, name
+		if name[0] == "@"
+			attributes.append childel
+		else
+			childlist.append childel
+	return el
+
+traverse_tags = (obj, callback, name) ->
+	if callback(obj, name)
+		return
+	if not _.isObject obj
+		return
+	for name, kid of obj
+		if _.isArray kid
+			for grandkid in kid
+				traverse_tags grandkid, callback, name
+			continue
+		traverse_tags kid, callback, name
+
+find_tags = (tree, predicate) ->
+	tags = []
+	traverse_tags tree, (obj, name) ->
+		if predicate obj, name
+			tags.push obj
+	return tags
+
+entry_preview = (item) ->
+	title = find_tags item, (obj, name) ->
+		name == 'TITLE_CONTRACT'
+	return $ """<h4 class="entry-title">#{title[0]}</h4>"""
+
+entry_view = (item) ->
+	view = tree_view item
+	istag = (key) ->
+		return false if key[0] == '_'
+		return false if key in ['MODIFIED', 'ID']
+		return true
+	view.addClass("list-group-item")
+	descr = view.find("> .item-description")
+	
+	subcontent = view.find("> .subcontent").hide()
+	descr.click ->
+		subcontent.toggle()
+	descr.css cursor: "pointer"
+
+	for key of item when istag(key)
+		descr.append $ """<button class="type-badge btn btn-xs">#{key}</button>"""
+	#view.find("> ul")
+	descr.append entry_preview item
+	return view
+
+render_entries = ($el, data) ->
+	$el.empty()
+	for item in data._items
+		$el.append entry_view(item)
+	#$el.treeview
+	#	data: (entry_view(item) for item in data._items)
+	#	levels: 1
+	#	nodeIcon: ""
+	#	showTags: true
+
+$el = $ "#entries"
+url = config.api_url + "?" + $.param config.default_args
+$.getJSON url, (data) ->
+	render_entries $el, data
+</script>
+</html>
