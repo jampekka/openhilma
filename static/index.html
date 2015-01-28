@@ -20,6 +20,10 @@
 	list-style-type: none;
 }
 
+.list-group {
+	margin-bottom: 10px;
+}
+
 #entries {
 	padding: 10px;
 }
@@ -70,8 +74,12 @@
 	margin-bottom: 0;
 }
 
-#infinifooter {
-	position: relative;
+#result_info {
+	text-align: center;
+}
+
+.pager {
+	margin-top: 0;
 }
 
 </style>
@@ -81,7 +89,7 @@
 <nav id="navigation" class="navigation navbar navbar-default" style="display: none">
 	<div class="container container-fluid">
 	  <div class="navbar-header">
-			<span class="navbar-brand">Open HILMA</span>
+			<a class="navbar-brand" href="?">Open HILMA</a>
 		</div>
 		<form class="searchform navbar-form navbar-right">
 		  <div class="form-group">
@@ -97,6 +105,7 @@
 </div>
 
 <div id="footer" class="container container-fluid">
+	<div id="result_info"></div>
 	<ul class="pager">
 		<li class="previous disabled"><a id="previous-page">&larr; Previous</a></li>
 		<li class="next disabled"><a id="next-page">Next &rarr;</a></li>
@@ -207,8 +216,11 @@ args = sanedeparam query
 
 args_href = (args) -> "?#{base}?#{saneparam args}"
 
-updated_href = (overrides) ->
+updated_href = (overrides, reset=["page"]) ->
 	newargs = _.clone args
+	for key in reset
+		delete newargs[key]
+	
 	for key, value of overrides
 		if not value?
 			delete newargs[value]
@@ -229,7 +241,6 @@ current_search_phrase = ->
 
 search_query = (phrase) ->
 	current_where = JSON.parse (args.where or "{}")
-	console.log current_where
 	current_search = find_tags current_where, (obj, name) ->
 		name == "$text"
 	current_search = current_search[0]
@@ -263,18 +274,25 @@ $("#navigation").show()
 
 $.getJSON config.api_url + url, (data) ->
 	#$("#footer").spin(false)
-	console.log data
 	next = data._links.next
 	if next
 		$("#next-page")
 		.prop("href", "?" + next.href)
 		.parent().removeClass("disabled")
-	
 	previous = data._links.prev
 	if previous
 		$("#previous-page")
 		.prop("href", "?" + previous.href)
 		.parent().removeClass("disabled")
+	
+	
+	if data._items.length == 0
+		$("#result_info").text "No matching entries"
+	else
+		meta = data._meta
+		first = (meta.page-1)*meta.max_results + 1
+		last = data._items.length + first - 1
+		$("#result_info").text "Entries #{first} - #{last} of #{meta.total}"
 	render_entries $el, data
 </script>
 </html>
