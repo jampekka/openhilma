@@ -265,7 +265,7 @@ $(".searchform").submit (ev) ->
 	phrase = $(@).find(".searchbox").val()
 	window.location.search = search_query phrase
 
-q = current_search_phrase
+q = current_search_phrase()
 if q?
 	$(".searchbox").val q
 
