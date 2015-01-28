@@ -4,6 +4,10 @@
 <script type="text/javascript" src="vendor/coffee-script.js"></script>
 <script type="text/javascript" src="vendor/underscore.js"></script>
 <script type="text/javascript" src="vendor/jquery.js"></script>
+<script type="text/coffeescript" src="vendor/saneparam.coffee"></script>
+
+<script type="text/javascript" src="vendor/spin.js"></script>
+<script type="text/javascript" src="vendor/jquery.spin.js"></script>
 
 <link href="vendor/bootstrap/css/bootstrap.css" rel="stylesheet">
 
@@ -62,18 +66,49 @@
 	float: right;
 }
 
+.navigation {
+	margin-bottom: 0;
+}
+
+#infinifooter {
+	position: relative;
+}
+
 </style>
 
 </head>
 <body>
-<ul id="entries" class="list-group"></ul>
+<nav id="navigation" class="navigation navbar navbar-default" style="display: none">
+	<div class="container container-fluid">
+	  <div class="navbar-header">
+			<span class="navbar-brand">Open HILMA</span>
+		</div>
+		<form class="searchform navbar-form navbar-right">
+		  <div class="form-group">
+				<input type="text" class="form-control searchbox" placeholder="Search contents...">
+				<button class="btn btn-default" type="submit">Search</button>
+			</div>
+		</form>
+	</div>
+</nav>
+
+<div class="container container-fluid">
+	<ul id="entries" class="list-group"></ul>
+</div>
+
+<div id="footer" class="container container-fluid">
+	<ul class="pager">
+		<li class="previous disabled"><a id="previous-page">&larr; Previous</a></li>
+		<li class="next disabled"><a id="next-page">Next &rarr;</a></li>
+	</ul>
+</div>
 </body>
 
 <script type="text/coffeescript">
 config =
-	api_url: "../api/v0/notices/"
+	api_url: "../api/v0/"
+	collection: "notices"
 	default_args: {'sort': '-MODIFIED'}
-
 
 tree_view = (items, name='') ->
 	el = $ """<li class="item-list-item">"""
@@ -156,18 +191,90 @@ entry_view = (item) ->
 	return view
 
 render_entries = ($el, data) ->
-	$el.empty()
 	for item in data._items
 		$el.append entry_view(item)
-	#$el.treeview
-	#	data: (entry_view(item) for item in data._items)
-	#	levels: 1
-	#	nodeIcon: ""
-	#	showTags: true
 
 $el = $ "#entries"
-url = config.api_url + "?" + $.param config.default_args
-$.getJSON url, (data) ->
+url = (window.location.search ? "?")[1..]
+if url.length == 0
+	url = "#{config.collection}?" + $.param config.default_args
+
+url_parts = url.split('?')
+base = url_parts[0]
+query = url_parts[1..].join('?')
+args = sanedeparam query
+
+
+args_href = (args) -> "?#{base}?#{saneparam args}"
+
+updated_href = (overrides) ->
+	newargs = _.clone args
+	for key, value of overrides
+		if not value?
+			delete newargs[value]
+		else
+			newargs[key] = value
+	return args_href newargs
+
+deepclone = (obj) -> JSON.parse JSON.stringify obj
+
+current_search_phrase = ->
+	current_where = JSON.parse (args.where or "{}")
+	current_search = find_tags current_where, (obj, name) ->
+		name == "$text"
+	current_search = current_search[0]
+	if not current_search?
+		return undefined
+	return current_search.$search
+
+search_query = (phrase) ->
+	current_where = JSON.parse (args.where or "{}")
+	console.log current_where
+	current_search = find_tags current_where, (obj, name) ->
+		name == "$text"
+	current_search = current_search[0]
+	if current_search
+		current_search.$search = phrase
+		return updated_href where: JSON.stringify current_where
+	
+	query_struct =
+		$text:
+			$search: phrase
+	
+	if _.isEmpty current_where
+		return updated_href where: JSON.stringify query_struct
+	
+	query_struct =
+		"$and": [current_where, query_struct]
+	
+	return updated_href where: JSON.stringify query_struct
+
+$(".searchform").submit (ev) ->
+	ev.preventDefault()
+	phrase = $(@).find(".searchbox").val()
+	window.location.search = search_query phrase
+
+q = current_search_phrase
+if q?
+	$(".searchbox").val q
+
+$("#navigation").show()
+#$("#footer").spin()
+
+$.getJSON config.api_url + url, (data) ->
+	#$("#footer").spin(false)
+	console.log data
+	next = data._links.next
+	if next
+		$("#next-page")
+		.prop("href", "?" + next.href)
+		.parent().removeClass("disabled")
+	
+	previous = data._links.prev
+	if previous
+		$("#previous-page")
+		.prop("href", "?" + previous.href)
+		.parent().removeClass("disabled")
 	render_entries $el, data
 </script>
 </html>
